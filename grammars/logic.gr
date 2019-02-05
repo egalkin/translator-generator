@@ -1,0 +1,21 @@
+grammar logic
+
+expr: impl exprprime;
+exprprime: IMPL impl exprprime | ;
+impl : or implprime;
+implprime : OR or implprime | ;
+or : xor orprime;
+orprime : XOR xor orprime | ;
+xor : and xorprime;
+xorprime: AND and xorprime | ;
+and : NOT and | not;
+not : ID | LPAREN expr RPAREN;
+
+IMPL : '->';
+OR : '|';
+XOR : '^';
+AND : '&';
+NOT : '!';
+ID : [a-z];
+LPAREN : '(';
+RPAREN : ')';
