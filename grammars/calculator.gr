@@ -1,0 +1,79 @@
+grammar bEgor
+
+
+
+expr returns [Integer value]
+    : total
+        { Integer v = total.getValue(); }
+        { value = v == null ? 0 : v;       }
+      expr1<value>
+        { if (expr1.getValue() != null) }
+        {   value = expr1.getValue();  }
+    ;
+
+expr1 [Integer inVal] returns [Integer value]
+    : opPlusMinus
+        { String op = opPlusMinus.getValue();       }
+      total
+        { Integer v = total.getValue();             }
+        { if (op.equals("+")) value = inVal + v;       }
+        { else if (op.equals("-")) value = inVal - v;  }
+        { else value = inVal;                          }
+      expr1<value>
+        { if (expr1.getValue() != null)             }
+        {   value = expr1.getValue();              }
+    |
+    ;
+
+opPlusMinus returns [String s]
+    : PLUS  { s = "+";  }
+    | MINUS { s = "-";  }
+    ;
+
+total returns [Integer value]
+    : unOps
+        { value = unOps.getValue();        }
+      total1<value>
+        { if (total1.getValue() != null)    }
+        {   value = total1.getValue();     }
+    ;
+
+total1 [Integer inVal] returns [Integer value]
+    : opMulDiv
+        { String op = opMulDiv.getValue();          }
+      unOps
+        { Integer v = unOps.getValue();System.out.println("Hello");}
+        { if (op.equals("*")) value = inVal * v;       }
+        { else if (op.equals("/")) value = inVal / v;  }
+        { else value = inVal;                          }
+      total1<value>
+        { if (total1.getValue() != null)            }
+        {   value = total1.getValue();             }
+    |
+    ;
+
+opMulDiv returns [String s]
+    : MUL   { s = "*";  }
+    | DIV   { s = "/";  }
+    ;
+
+unOps returns [Integer value]
+    : term {value = term.getValue();}
+    ;
+
+term returns [Integer value]
+    : VALUE
+        { value = Integer.valueOf(VALUE.getValue());  }
+    | LPAREN expr RPAREN
+        { value = expr.getValue();                 }
+;
+
+LPAREN:     '(';
+RPAREN:     ')';
+
+PLUS:       '+';
+MINUS:      '-';
+MUL:        '*';
+DIV:        '/';
+
+VALUE: [1-9][0-9]*;

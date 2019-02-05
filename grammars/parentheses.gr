@@ -1,0 +1,9 @@
+grammar bEgor
+
+s
+    :  LPAREN s RPAREN s
+    |
+;
+
+LPAREN:     '(';
+RPAREN:     ')';
