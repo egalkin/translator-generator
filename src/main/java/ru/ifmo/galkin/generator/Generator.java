@@ -17,16 +17,10 @@ public class Generator {
     private final String gparsePackage = "ru.ifmo.galkin.gparse";
 
     public static void main(String... args) {
-        new Generator(String.format("grammars/%s", args[0]));
+        new Generator(String.format("grammars/%s", args[0])).generate();
     }
 
-
-    public Generator(String path) {
-        parseGrammar(path);
-        createFolder();
-//        for (NonTerminal nt : grammar.getRules().keySet()) {
-//            System.out.println(nt + ": " + grammar.getRules().get(nt));
-//        }
+    public void generate() {
         if (!grammar.getBrokenTerminals().keySet().isEmpty()) {
             for (String brokenTerminal : grammar.getBrokenTerminals().keySet()) {
                 System.out.println("Broken terminal " + brokenTerminal + " rule: " + grammar.getBrokenTerminals().get(brokenTerminal));
@@ -40,6 +34,11 @@ public class Generator {
                     gparseFolder, gparsePackage, 0);
             new ParserGenerator(grammar.getRules(), description.getImports()).generateParser(gparseFolder, gparsePackage,0);
         }
+    }
+
+    public Generator(String path) {
+        parseGrammar(path);
+        createFolder();
     }
 
     private boolean createFolder() {
