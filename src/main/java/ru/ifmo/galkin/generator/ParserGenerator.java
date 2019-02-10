@@ -76,10 +76,20 @@ public class ParserGenerator {
         StringJoiner body = new StringJoiner("");
         body.add(getVarsString(innerLevel));
         body.add(buildConstructor(innerLevel));
+        body.add(buildIsFinished());
         for (NonTerminal nt : rules.keySet()) {
             body.add(buildRule(rules.get(nt), innerLevel));
         }
         return body.toString();
+    }
+
+
+    private String buildIsFinished() {
+        String method =
+                "    public boolean isFinished() {\n" +
+                "        return this.curToken == Token.END;\n" +
+                "    }\n\n";
+        return method;
     }
 
     private String buildRule(Rule rule, int innerLevel) {
@@ -188,6 +198,9 @@ public class ParserGenerator {
                         Terminal terminal = (Terminal) elem;
                         body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal, namesInContext));
                         body.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), false));
+                        body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER),
+                            "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
+
                     } else if (elem instanceof NonTermPair) {
                         NonTermPair pair = (NonTermPair) elem;
                         body.add(buildNonTermPairCaseBaseBody(ws, pair, namesInContext, false));
