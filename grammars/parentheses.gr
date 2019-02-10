@@ -1,7 +1,12 @@
 grammar bEgor
 
+@header {
+    import java.util.ArrayList;
+}
+
 s
-    :  LPAREN s RPAREN s
+    :  LPAREN s {System.out.println(Math.pow(2,8));} RPAREN s
+        {ArrayList<Integer> nums = new ArrayList<>();}
     |
 ;
 
