@@ -1,0 +1,14 @@
+grammar bEgor
+
+a
+    : A B1
+    | A B2
+    | EG a G
+;
+
+A : 'a';
+B1 : 'b1';
+B2 : 'b2';
+EG : 'egor';
+G  : 'g';
+
