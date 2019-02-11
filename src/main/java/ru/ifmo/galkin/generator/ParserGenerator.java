@@ -87,8 +87,8 @@ public class ParserGenerator {
     private String buildIsFinished() {
         String method =
                 "    public boolean isFinished() {\n" +
-                "        return this.curToken == Token.END;\n" +
-                "    }\n\n";
+                        "        return this.curToken == Token.END;\n" +
+                        "    }\n\n";
         return method;
     }
 
@@ -199,7 +199,7 @@ public class ParserGenerator {
                         body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal, namesInContext));
                         body.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), false));
                         body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER),
-                            "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
+                                "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
 
                     } else if (elem instanceof NonTermPair) {
                         NonTermPair pair = (NonTermPair) elem;
@@ -267,9 +267,7 @@ public class ParserGenerator {
     }
 
     private void buildFirst() {
-        for (NonTerminal nt : nonTerminals) {
-            first.get(nt.getName()).addAll(countFirst(nt));
-        }
+        countFirst();
         for (String name : first.keySet()) {
             System.out.print(name + " first : ");
             for (Terminal term : first.get(name)) {
@@ -291,44 +289,44 @@ public class ParserGenerator {
         }
     }
 
-    private Set<Terminal> countFirst(NonTerminal nt) {
-        if (this.alreadyCountedFirst.get(nt.getName()))
-            return this.first.get(nt.getName());
-        Rule ntRule = rules.get(nt);
-        Set<Terminal> first = new HashSet<>();
-        List<List<RuleElem>> productions = ntRule.getProductions();
-        for (List<RuleElem> prod : productions) {
-            List<RuleElem> oneProd = prod.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
-            for (int i = 0; i < oneProd.size(); ++i) {
-                RuleElem elem = oneProd.get(i);
-                if (elem instanceof Terminal) {
-                    Terminal terminal = (Terminal) elem;
-                    if (terminal.getName().equals("EPS")) {
-                        if (eps == null)
-                            eps = terminal;
-                    }
-                    first.add(terminal);
-                    break;
-                } else if (elem instanceof NonTermPair) {
-                    NonTerminal nonTerminal = ((NonTermPair) elem).getNonTerminal();
-                    if (i == 0) {
-                        Set<Terminal> sonFirst = countFirst(nonTerminal);
-                        this.first.get(nonTerminal.getName()).addAll(sonFirst);
-                        first.addAll(sonFirst);
-                    } else {
-                        RuleElem previous = oneProd.get(i - 1);
-                        if (previous instanceof NonTermPair) {
-                            if (this.first.get(previous.getName()).contains(eps))
-                                first.addAll(countFirst(nonTerminal));
-                        } else {
+
+    private void countFirst() {
+        for (NonTerminal nt : nonTerminals)
+            this.first.put(nt.getName(), new HashSet<>());
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (NonTerminal nt : nonTerminals) {
+                Rule ntRule = rules.get(nt);
+                List<List<RuleElem>> productions = ntRule.getProductions();
+                int firstSize = this.first.get(nt.getName()).size();
+                for (List<RuleElem> prod : productions) {
+                    List<RuleElem> oneProd = prod.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
+                    for (int i = 0; i < oneProd.size(); ++i) {
+                        RuleElem elem = oneProd.get(i);
+                        if (elem instanceof Terminal) {
+                            Terminal terminal = (Terminal) elem;
+                            if (terminal.getName().equals("EPS")) {
+                                if (eps == null)
+                                    eps = terminal;
+                            }
+                            this.first.get(nt.getName()).add(terminal);
                             break;
+                        } else if (elem instanceof NonTermPair) {
+                            if (i == 0)
+                                this.first.get(nt.getName()).addAll(this.first.get(elem.getName()));
+                            else {
+                                RuleElem previous = oneProd.get(i - 1);
+                                if (previous instanceof NonTermPair)
+                                    if (this.first.get(previous.getName()).contains(eps))
+                                        this.first.get(nt.getName()).addAll(this.first.get(previous.getName()));
+                            }
                         }
                     }
                 }
+                changed |= (firstSize != this.first.get(nt.getName()).size());
             }
         }
-        this.alreadyCountedFirst.replace(nt.getName(), true);
-        return first;
     }
 
     private void countFollow() {
