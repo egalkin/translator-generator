@@ -1,5 +1,6 @@
 package ru.ifmo.galkin.generator;
 
+import ru.ifmo.galkin.excaption.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.*;
 import ru.ifmo.galkin.utils.FormatUtils;
 
@@ -16,9 +17,7 @@ public class ParserGenerator {
     private List<String> imports;
     private HashMap<NonTerminal, Rule> rules;
     private HashMap<String, HashSet<Terminal>> first;
-    private HashMap<String, Boolean> alreadyCountedFirst;
     private HashMap<String, HashSet<Terminal>> follow;
-    private HashMap<String, Boolean> alreadyCountedFollow;
     private final String wsAndStringTemplate = "%s%s";
     private Terminal eps;
 
@@ -28,21 +27,18 @@ public class ParserGenerator {
         this.nonTerminals = rules.keySet();
         this.rules = rules;
         this.first = new HashMap<>();
-        this.alreadyCountedFirst = new HashMap<>();
         this.follow = new HashMap<>();
-        this.alreadyCountedFollow = new HashMap<>();
         this.eps = null;
         for (NonTerminal nt : nonTerminals) {
             first.put(nt.getName(), new HashSet<>());
-            alreadyCountedFirst.put(nt.getName(), false);
             follow.put(nt.getName(), new HashSet<>());
-            alreadyCountedFollow.put(nt.getName(), false);
         }
     }
 
-    public void generateParser(String path, String pkg, int innerLevel) {
+    public void generateParser(String path, String pkg, int innerLevel) throws NotLL1GrammarException{
         buildFirst();
         buildFollow();
+        checkLL1();
         try (BufferedWriter parserWriter = new BufferedWriter(new FileWriter(String.format("%s/Parser.java", path)))) {
             String ws = FormatUtils.getWhitespacesString(innerLevel);
             parserWriter.write(String.format("package %s;\n", pkg));
@@ -54,6 +50,8 @@ public class ParserGenerator {
             System.out.println(ex.getMessage());
         }
     }
+
+
 
     private String buildImports() {
         StringJoiner imports = new StringJoiner("");
@@ -291,8 +289,6 @@ public class ParserGenerator {
 
 
     private void countFirst() {
-        for (NonTerminal nt : nonTerminals)
-            this.first.put(nt.getName(), new HashSet<>());
         boolean changed = true;
         while (changed) {
             changed = false;
@@ -371,5 +367,42 @@ public class ParserGenerator {
                 }
             }
         }
+    }
+
+    public void checkLL1() throws NotLL1GrammarException {
+        for (NonTerminal nt : nonTerminals) {
+            Rule ntRule = rules.get(nt);
+            List<List<RuleElem>> productions = ntRule.getProductions();
+            for (List<RuleElem> prod1 : productions)
+                for (List<RuleElem> prod2 : productions) {
+                    if (prod1 == prod2)
+                        continue;
+                    List<RuleElem> firstProd = prod1.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
+                    List<RuleElem> secondProd = prod2.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
+                    Set<Terminal> first1 = getElemsFirst(firstProd.get(0));
+                    Set<Terminal> first2 = getElemsFirst(secondProd.get(0));
+                    if (first1.contains(eps)) {
+                        Set<Terminal> follow = new HashSet<>(this.follow.get(nt.getName()));
+                        follow.retainAll(first2);
+                        if (follow.size() != 0)
+                            throw new NotLL1GrammarException("Given grammar is not LL1");
+                    } else {
+                        first1.retainAll(first2);
+                        if (first1.size() != 0)
+                            throw new NotLL1GrammarException("Given grammar is not LL1");
+                    }
+                }
+        }
+    }
+
+    public Set<Terminal> getElemsFirst(RuleElem elem) {
+        if (elem instanceof NonTermPair) {
+            NonTerminal nonTerminal = ((NonTermPair)elem).getNonTerminal();
+            return new HashSet<>(this.first.get(nonTerminal.getName()));
+        } else if (elem instanceof Terminal) {
+            Terminal terminal = (Terminal) elem;
+            return new HashSet<>(Collections.singletonList(terminal));
+        }
+        return null;
     }
 }

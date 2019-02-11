@@ -19,7 +19,7 @@ public class Terminal extends RuleElem {
 
 
     public String getRegexp() {
-        return this.regexp.toString();
+        return regexp == null ? "" : this.regexp.toString();
     }
 
     public boolean isBrokenRegexp() {

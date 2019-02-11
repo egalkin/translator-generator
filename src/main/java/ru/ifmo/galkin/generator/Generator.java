@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import ru.ifmo.galkin.antlr4.ParserGrammarLexer;
 import ru.ifmo.galkin.antlr4.ParserGrammarParser;
+import ru.ifmo.galkin.excaption.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.Grammar;
 import ru.ifmo.galkin.grammar.GrammarDescription;
 
@@ -16,18 +17,16 @@ public class Generator {
     private final String gparseFolder = "gen/ru/ifmo/galkin/gparse";
     private final String gparsePackage = "ru.ifmo.galkin.gparse";
 
-    public static void main(String... args) {
+    public static void main(String... args) throws NotLL1GrammarException {
         new Generator(String.format("grammars/%s", args[0])).generate();
     }
 
-    public void generate() {
+    public void generate() throws NotLL1GrammarException {
         if (!grammar.getBrokenTerminals().keySet().isEmpty()) {
             for (String brokenTerminal : grammar.getBrokenTerminals().keySet()) {
                 System.out.println("Broken terminal " + brokenTerminal + " rule: " + grammar.getBrokenTerminals().get(brokenTerminal));
             }
         } else {
-            for (String reg : grammar.getRegexpToTermName().keySet())
-                System.out.println(reg);
             TreeGenerator.generateTree(gparseFolder, gparsePackage);
             new TokensGenerator().generateTokens(grammar.getTerminals(), gparseFolder, gparsePackage, 0);
             new AnalyzerGenerator().generateAnalyzer(grammar.getRegexpToTermName(), grammar.getValueToTermName(),
