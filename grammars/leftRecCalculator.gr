@@ -1,0 +1,14 @@
+grammar leftRecCalc
+
+expr
+    : expr PLUS expr
+    | expr MUL expr
+    | LPAREN expr RPAREN
+    | VALUE
+;
+
+PLUS : '+';
+MUL : '-';
+LPAREN : '(';
+RPAREN : ')';
+VALUE: [1-9][0-9]*;
