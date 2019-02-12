@@ -95,7 +95,7 @@ public class ParserGenerator {
         StringJoiner body = new StringJoiner("");
         body.add(getVarsString(innerLevel));
         body.add(buildConstructor(innerLevel));
-        body.add(buildIsFinished());
+        body.add(buildParseMethod(innerLevel));
         for (NonTerminal nt : nonTerminals) {
             body.add(buildRule(rules.get(nt), innerLevel));
         }
@@ -103,12 +103,23 @@ public class ParserGenerator {
     }
 
 
-    private String buildIsFinished() {
-        String method =
-                "    public boolean isFinished() {\n" +
-                        "        return this.curToken == Token.END;\n" +
-                        "    }\n\n";
-        return method;
+    private String buildParseMethod(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner method = new StringJoiner("");
+        method.add(String.format("%s%s", ws, "public Tree parse() throws ParseException {\n"));
+        method.add(buildParseMethodBody(innerLevel+1));
+        method.add(FormatUtils.getDefaultEnd(ws, true));
+        return method.toString();
+    }
+
+    private String buildParseMethodBody(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner body = new StringJoiner("");
+        NonTerminal start = nonTerminals.iterator().next();
+        body.add(String.format("%s%s", ws, String.format("Tree result = %s();\n", start.getName())));
+        body.add(String.format("%s%s", ws, "if (this.curToken == Token.END) return result;\n"));
+        body.add(String.format("%s%s", ws, "else throw new ParseException(\"Expect end of input, found: \" + curToken, lex.getCurPos());\n"));
+        return body.toString();
     }
 
     private String buildRule(Rule rule, int innerLevel) {
@@ -231,9 +242,9 @@ public class ParserGenerator {
                     }
                 }
             }
+            body.add(String.format("%sreturn new Tree<>(\"%s\", trees,%s);\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), rule.getNonTerminal().getName(), rule.getVarName()));
             body.add(FormatUtils.getDefaultEnd(ws, false));
         }
-        body.add(String.format("%sreturn new Tree<>(\"%s\", trees,%s);\n", ws, rule.getNonTerminal().getName(), rule.getVarName()));
         return body.toString();
     }
 
