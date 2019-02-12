@@ -42,4 +42,14 @@ public class CalculatorTest {
         }
     }
 
+    @Test
+    public void testPowExp() {
+        try {
+            Parser parser = new Parser(new ByteArrayInputStream("2 ^ 4 ^ 2".getBytes()));
+            assertEquals(65536, parser.parse().getValue());
+        } catch (ParseException ex) {
+            Assert.fail();
+        }
+    }
+
 }
