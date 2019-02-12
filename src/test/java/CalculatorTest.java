@@ -1,7 +1,5 @@
 import org.junit.Assert;
 import org.junit.Test;
-import ru.ifmo.galkin.excaption.NotLL1GrammarException;
-import ru.ifmo.galkin.generator.Generator;
 import ru.ifmo.galkin.gparse.Parser;
 
 import java.io.ByteArrayInputStream;
@@ -11,14 +9,6 @@ import java.text.ParseException;
 import static org.junit.Assert.assertEquals;
 
 public class CalculatorTest {
-    @Test
-    public void generateCalculatorParser() {
-        try {
-            new Generator(String.format("grammars/%s", "calculator.gr")).generate();
-        } catch (NotLL1GrammarException ex) {
-            Assert.fail();
-        }
-    }
 
     @Test
     public void testSimpleExpression() {
