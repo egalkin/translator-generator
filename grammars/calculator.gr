@@ -1,10 +1,12 @@
 grammar bEgor
 
-
+@header {
+    import ru.ifmo.galkin.utils.MathUtils;
+}
 
 expr returns [Integer value]
-    : total
-        { Integer v = total.getValue(); }
+    : mulDiv
+        { Integer v = mulDiv.getValue(); }
         { value = v == null ? 0 : v;       }
       expr1<value>
         { if (expr1.getValue() != null) }
@@ -14,41 +16,42 @@ expr returns [Integer value]
 expr1 [Integer inVal] returns [Integer value]
     : opPlusMinus
         { String op = opPlusMinus.getValue();       }
-      total
-        { Integer v = total.getValue();             }
+      mulDiv
+        { Integer v = mulDiv.getValue();             }
         { if (op.equals("+")) value = inVal + v;       }
         { else if (op.equals("-")) value = inVal - v;  }
         { else value = inVal;                          }
       expr1<value>
         { if (expr1.getValue() != null)             }
-        {   value = expr1.getValue();              }
+        {   value = expr1.getValue();               }
     |
     ;
+
 
 opPlusMinus returns [String s]
     : PLUS  { s = "+";  }
     | MINUS { s = "-";  }
     ;
 
-total returns [Integer value]
-    : unOps
-        { value = unOps.getValue();        }
-      total1<value>
-        { if (total1.getValue() != null)    }
-        {   value = total1.getValue();     }
+mulDiv returns [Integer value]
+    : power
+        { value = power.getValue();        }
+      mulDiv1<value>
+        { if (mulDiv1.getValue() != null)    }
+        {   value = mulDiv1.getValue();     }
     ;
 
-total1 [Integer inVal] returns [Integer value]
+mulDiv1 [Integer inVal] returns [Integer value]
     : opMulDiv
         { String op = opMulDiv.getValue();          }
-      unOps
-        { Integer v = unOps.getValue();System.out.println("Hello");}
+      power
+        { Integer v = power.getValue();                }
         { if (op.equals("*")) value = inVal * v;       }
         { else if (op.equals("/")) value = inVal / v;  }
         { else value = inVal;                          }
-      total1<value>
-        { if (total1.getValue() != null)            }
-        {   value = total1.getValue();             }
+      mulDiv1<value>
+        { if (mulDiv1.getValue() != null)            }
+        {   value = mulDiv1.getValue();             }
     |
     ;
 
@@ -57,8 +60,48 @@ opMulDiv returns [String s]
     | DIV   { s = "/";  }
     ;
 
-unOps returns [Integer value]
-    : term {value = term.getValue();}
+power returns [Integer value]
+    : unary
+        { Integer v = unary.getValue();    }
+        { value = v == null ? 1 : v;       }
+      power1<value>
+        { if (power1.getValue() != null) }
+        {   value = power1.getValue();  }
+    ;
+
+
+power1 [Integer inVal] returns [Integer value]
+   : POW
+     unary
+       { Integer v = unary.getValue();             }
+       { value = (int) Math.pow(inVal, v);         }
+     power1<value>
+       { if (power1.getValue() != null) }
+       {   value = power1.getValue();  }
+    |
+   ;
+
+
+
+unary returns [Integer value]
+    :  opPlusMinus {String op = opPlusMinus.getValue();}
+       term
+         {value = term.getValue();}
+         {if (op.equals("-")) value = 0 - value;}
+       | term {value = term.getValue();}
+             fact<value>
+                  { Integer factVal = fact.getValue();    }
+                  { if (factVal != null) value = factVal; }
+    ;
+
+
+fact [Integer inVal] returns [Integer value]
+    : FACTORIAL
+        { value = MathUtils.countFactorial(inVal);           }
+      fact<value>
+        { Integer factVal = fact.getValue();    }
+        { if (factVal != null) value = factVal;    }
+    |
     ;
 
 term returns [Integer value]
@@ -75,5 +118,7 @@ PLUS:       '+';
 MINUS:      '-';
 MUL:        '*';
 DIV:        '/';
+POW:        '^';
+FACTORIAL:  '!';
 
 VALUE: [1-9][0-9]*;
