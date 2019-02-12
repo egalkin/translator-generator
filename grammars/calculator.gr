@@ -74,10 +74,11 @@ power1 [Integer inVal] returns [Integer value]
    : POW
      unary
        { Integer v = unary.getValue();             }
-       { value = (int) Math.pow(inVal, v);         }
-     power1<value>
+       {    value = (int) Math.pow(inVal, v);}
+     power1<v>
        { if (power1.getValue() != null) }
-       {   value = power1.getValue();  }
+       {   value = (int) Math.pow(inVal, power1.getValue());  }
+
     |
    ;
 
