@@ -7,9 +7,13 @@ import ru.ifmo.galkin.antlr4.ParserGrammarParser;
 import ru.ifmo.galkin.excaption.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.Grammar;
 import ru.ifmo.galkin.grammar.GrammarDescription;
+import ru.ifmo.galkin.grammar.Terminal;
+import ru.ifmo.galkin.utils.FirstFollowUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 
 public class Generator {
     private GrammarDescription description;
@@ -28,10 +32,16 @@ public class Generator {
             }
         } else {
             TreeGenerator.generateTree(gparseFolder, gparsePackage);
+            HashMap<String, HashSet<Terminal>> first = FirstFollowUtils.countFirst(grammar.getNonTerminals(),
+                    grammar.getRules());
+            HashMap<String, HashSet<Terminal>> follow = FirstFollowUtils.countFollow(grammar.getNonTerminals(),
+                    grammar.getRules(), first);
+            FirstFollowUtils.checkLL1(grammar.getNonTerminals(), grammar.getRules(), first, follow);
             new TokensGenerator().generateTokens(grammar.getTerminals(), gparseFolder, gparsePackage, 0);
             new AnalyzerGenerator().generateAnalyzer(grammar.getRegexpToTermName(), grammar.getValueToTermName(),
                     gparseFolder, gparsePackage, 0);
-            new ParserGenerator(grammar.getNonTerminals(), grammar.getRules(), description.getImports()).generateParser(gparseFolder, gparsePackage, 0);
+            new ParserGenerator(grammar.getNonTerminals(), grammar.getRules(),
+                    description.getImports(), first, follow).generateParser(gparseFolder, gparsePackage, 0);
         }
     }
 
