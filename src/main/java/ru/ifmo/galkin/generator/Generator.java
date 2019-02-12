@@ -31,7 +31,7 @@ public class Generator {
             new TokensGenerator().generateTokens(grammar.getTerminals(), gparseFolder, gparsePackage, 0);
             new AnalyzerGenerator().generateAnalyzer(grammar.getRegexpToTermName(), grammar.getValueToTermName(),
                     gparseFolder, gparsePackage, 0);
-            new ParserGenerator(grammar.getRules(), description.getImports()).generateParser(gparseFolder, gparsePackage,0);
+            new ParserGenerator(grammar.getNonTerminals(), grammar.getRules(), description.getImports()).generateParser(gparseFolder, gparsePackage, 0);
         }
     }
 
