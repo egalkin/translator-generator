@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 
-
 public class TreeGenerator {
 
     public static void generateTree(String path, String pkg) {

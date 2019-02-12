@@ -11,20 +11,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ParserGenerator {
-    private final int WS_MULTIPLYER = 4;
+    private final int WS_MULTIPLIER = 4;
 
     private Set<NonTerminal> nonTerminals;
     private List<String> imports;
     private HashMap<NonTerminal, Rule> rules;
     private HashMap<String, HashSet<Terminal>> first;
     private HashMap<String, HashSet<Terminal>> follow;
-    private final String wsAndStringTemplate = "%s%s";
     private Terminal eps;
 
 
-    public ParserGenerator(HashMap<NonTerminal, Rule> rules, List<String> imports) {
+    public ParserGenerator(Set<NonTerminal> nonTerminals, HashMap<NonTerminal, Rule> rules, List<String> imports) {
         this.imports = imports;
-        this.nonTerminals = rules.keySet();
+        this.nonTerminals = nonTerminals;
         this.rules = rules;
         this.first = new HashMap<>();
         this.follow = new HashMap<>();
@@ -35,9 +34,9 @@ public class ParserGenerator {
         }
     }
 
-    public void generateParser(String path, String pkg, int innerLevel) throws NotLL1GrammarException{
-        buildFirst();
-        buildFollow();
+    public void generateParser(String path, String pkg, int innerLevel) throws NotLL1GrammarException {
+        countFirst();
+        countFollow();
         checkLL1();
         try (BufferedWriter parserWriter = new BufferedWriter(new FileWriter(String.format("%s/Parser.java", path)))) {
             String ws = FormatUtils.getWhitespacesString(innerLevel);
@@ -51,6 +50,28 @@ public class ParserGenerator {
         }
     }
 
+    private void buildFirst() {
+        countFirst();
+        for (String name : first.keySet()) {
+            System.out.print(name + " first : ");
+            for (Terminal term : first.get(name)) {
+                System.out.print(term + " ");
+            }
+            System.out.println();
+        }
+
+    }
+
+    private void buildFollow() {
+        countFollow();
+        for (String name : follow.keySet()) {
+            System.out.print(name + " folow : ");
+            for (Terminal term : follow.get(name)) {
+                System.out.print(term + " ");
+            }
+            System.out.println();
+        }
+    }
 
 
     private String buildImports() {
@@ -74,20 +95,31 @@ public class ParserGenerator {
         StringJoiner body = new StringJoiner("");
         body.add(getVarsString(innerLevel));
         body.add(buildConstructor(innerLevel));
-        body.add(buildIsFinished());
-        for (NonTerminal nt : rules.keySet()) {
+        body.add(buildParseMethod(innerLevel));
+        for (NonTerminal nt : nonTerminals) {
             body.add(buildRule(rules.get(nt), innerLevel));
         }
         return body.toString();
     }
 
 
-    private String buildIsFinished() {
-        String method =
-                "    public boolean isFinished() {\n" +
-                        "        return this.curToken == Token.END;\n" +
-                        "    }\n\n";
-        return method;
+    private String buildParseMethod(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner method = new StringJoiner("");
+        method.add(String.format("%s%s", ws, "public Tree parse() throws ParseException {\n"));
+        method.add(buildParseMethodBody(innerLevel+1));
+        method.add(FormatUtils.getDefaultEnd(ws, true));
+        return method.toString();
+    }
+
+    private String buildParseMethodBody(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner body = new StringJoiner("");
+        NonTerminal start = nonTerminals.iterator().next();
+        body.add(String.format("%s%s", ws, String.format("Tree result = %s();\n", start.getName())));
+        body.add(String.format("%s%s", ws, "if (this.curToken == Token.END) return result;\n"));
+        body.add(String.format("%s%s", ws, "else throw new ParseException(\"Expect end of input, found: \" + curToken, lex.getCurPos());\n"));
+        return body.toString();
     }
 
     private String buildRule(Rule rule, int innerLevel) {
@@ -130,16 +162,16 @@ public class ParserGenerator {
         body.add(String.format("%sif (curToken == Token.%s) {\n", ws, terminal.getName()));
         if (!namesInContext.contains(terminal.getName())) {
             body.add(String.format("%sTree<String> %s = new Tree<>(this.lex.getCurTokenString(), Collections.emptyList(), this.lex.getCurTokenString());\n",
-                    FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal.getName()));
+                    FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal.getName()));
             namesInContext.add(terminal.getName());
         } else {
             body.add(String.format("%s%s = new Tree<>(this.lex.getCurTokenString(), Collections.emptyList(), this.lex.getCurTokenString());\n",
-                    FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal.getName()));
+                    FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal.getName()));
         }
         body.add(String.format("%strees.add(%s);\n",
-                FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal.getName()));
+                FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal.getName()));
         body.add(String.format("%slex.nextToken();\n",
-                FormatUtils.getModifiedWs(ws, WS_MULTIPLYER)));
+                FormatUtils.getModifiedWs(ws, WS_MULTIPLIER)));
         return body.toString();
     }
 
@@ -156,16 +188,16 @@ public class ParserGenerator {
         String type = rules.get(nonTerminal).getReturnValue();
         String genericType = type == null ? "Object" : type;
         if (!namesInContext.contains(nonTerminal.getName())) {
-            body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER),
+            body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
                     String.format("Tree<%s> %s = %s(%s);\n", genericType,
                             nonTerminal.getName(), nonTerminal.getName(), paramString.toString())));
             namesInContext.add(nonTerminal.getName());
         } else {
-            body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER),
+            body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
                     String.format("%s = %s(%s);\n", nonTerminal.getName(), nonTerminal.getName(), paramString.toString())));
             namesInContext.add(nonTerminal.getName());
         }
-        body.add(String.format("%strees.add(%s);\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), nonTerminal.getName()));
+        body.add(String.format("%strees.add(%s);\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), nonTerminal.getName()));
         return body.toString();
     }
 
@@ -194,9 +226,9 @@ public class ParserGenerator {
                 } else {
                     if (elem instanceof Terminal) {
                         Terminal terminal = (Terminal) elem;
-                        body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), terminal, namesInContext));
-                        body.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), false));
-                        body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER),
+                        body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal, namesInContext));
+                        body.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), false));
+                        body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
                                 "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
 
                     } else if (elem instanceof NonTermPair) {
@@ -205,14 +237,14 @@ public class ParserGenerator {
                     } else if (elem instanceof CodeBlock) {
                         CodeBlock codeBlock = (CodeBlock) elem;
                         for (String line : codeBlock.getCodeLines()) {
-                            body.add(String.format("%s%s\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLYER), line.substring(1, line.length() - 1).trim()));
+                            body.add(String.format("%s%s\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), line.substring(1, line.length() - 1).trim()));
                         }
                     }
                 }
             }
+            body.add(String.format("%sreturn new Tree<>(\"%s\", trees,%s);\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), rule.getNonTerminal().getName(), rule.getVarName()));
             body.add(FormatUtils.getDefaultEnd(ws, false));
         }
-        body.add(String.format("%sreturn new Tree<>(\"%s\", trees,%s);\n", ws, rule.getNonTerminal().getName(), rule.getVarName()));
         return body.toString();
     }
 
@@ -229,7 +261,7 @@ public class ParserGenerator {
     private String buildConstructor(int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner constructor = new StringJoiner("");
-        constructor.add(String.format(wsAndStringTemplate, ws, "public Parser(InputStream is) throws ParseException {\n"));
+        constructor.add(String.format("%s%s", ws, "public Parser(InputStream is) throws ParseException {\n"));
         constructor.add(getConstructorBody(innerLevel + 1));
         constructor.add(FormatUtils.getDefaultEnd(ws, true));
         return constructor.toString();
@@ -261,29 +293,6 @@ public class ParserGenerator {
                 body.add(String.format("this.%s.get(\"%s\").add(Token.%s)", name, nt, terminal.getName()));
                 i++;
             }
-        }
-    }
-
-    private void buildFirst() {
-        countFirst();
-        for (String name : first.keySet()) {
-            System.out.print(name + " first : ");
-            for (Terminal term : first.get(name)) {
-                System.out.print(term + " ");
-            }
-            System.out.println();
-        }
-
-    }
-
-    private void buildFollow() {
-        countFollow();
-        for (String name : follow.keySet()) {
-            System.out.print(name + " folow : ");
-            for (Terminal term : follow.get(name)) {
-                System.out.print(term + " ");
-            }
-            System.out.println();
         }
     }
 
@@ -397,7 +406,7 @@ public class ParserGenerator {
 
     public Set<Terminal> getElemsFirst(RuleElem elem) {
         if (elem instanceof NonTermPair) {
-            NonTerminal nonTerminal = ((NonTermPair)elem).getNonTerminal();
+            NonTerminal nonTerminal = ((NonTermPair) elem).getNonTerminal();
             return new HashSet<>(this.first.get(nonTerminal.getName()));
         } else if (elem instanceof Terminal) {
             Terminal terminal = (Terminal) elem;

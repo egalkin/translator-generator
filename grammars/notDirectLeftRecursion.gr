@@ -1,0 +1,15 @@
+grammar bEgor
+
+@header {
+    import java.util.ArrayList;
+}
+
+s
+    : exp LPAREN s RPAREN
+    |
+;
+
+exp : s LPAREN;
+
+LPAREN:     '(';
+RPAREN:     ')';

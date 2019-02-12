@@ -15,8 +15,8 @@ public class Grammar {
 
 
     public Grammar() {
-        terminals = new HashSet<>();
-        nonTerminals = new HashSet<>();
+        terminals = new LinkedHashSet<>();
+        nonTerminals = new LinkedHashSet<>();
         rules = new HashMap<>();
         termNameToValue = new HashMap<>();
         valueToTermName = new HashMap<>();
@@ -49,6 +49,7 @@ public class Grammar {
     }
 
     public void addRule(NonTerminal source, Rule rule) {
+        nonTerminals.add(source);
         rules.put(source, rule);
     }
 
