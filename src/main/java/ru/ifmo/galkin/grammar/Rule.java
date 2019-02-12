@@ -1,7 +1,6 @@
 package ru.ifmo.galkin.grammar;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.StringJoiner;
 

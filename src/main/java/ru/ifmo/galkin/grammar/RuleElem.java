@@ -1,7 +1,5 @@
 package ru.ifmo.galkin.grammar;
 
-import java.util.List;
-
 public class RuleElem {
     private String name;
 
