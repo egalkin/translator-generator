@@ -30,8 +30,8 @@ public class RuleElem {
         if (this == obj) {
             return true;
         }
-        if (obj instanceof String)
-            return this.name.equals(obj);
+        if (obj instanceof RuleElem)
+            return this.name.equals(((RuleElem) obj).getName());
         return false;
     }
 }
