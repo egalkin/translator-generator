@@ -19,29 +19,24 @@ public class ParserGenerator {
     private HashMap<String, HashSet<Terminal>> first;
     private HashMap<String, HashSet<Terminal>> follow;
     private Terminal eps;
-    private Terminal end;
-    private NonTerminal start;
 
 
-    public ParserGenerator(Set<NonTerminal> nonTerminals, HashMap<NonTerminal, Rule> rules, List<String> imports) {
+    public ParserGenerator(Set<NonTerminal> nonTerminals,
+                           HashMap<NonTerminal, Rule> rules,
+                           List<String> imports,
+                           HashMap<String, HashSet<Terminal>> first,
+                           HashMap<String, HashSet<Terminal>> follow) {
         this.imports = imports;
         this.nonTerminals = nonTerminals;
         this.rules = rules;
         this.first = new HashMap<>();
         this.follow = new HashMap<>();
-        this.eps = null;
-        this.end = new Terminal("END");
-        this.start = nonTerminals.iterator().next();
-        for (NonTerminal nt : nonTerminals) {
-            first.put(nt.getName(), new HashSet<>());
-            follow.put(nt.getName(), new HashSet<>());
-        }
+        this.eps = new Terminal("EPS");
+        this.first = first;
+        this.follow = follow;
     }
 
-    public void generateParser(String path, String pkg, int innerLevel) throws NotLL1GrammarException {
-        countFirst();
-        countFollow();
-        checkLL1();
+    public void generateParser(String path, String pkg, int innerLevel)  {
         try (BufferedWriter parserWriter = new BufferedWriter(new FileWriter(String.format("%s/Parser.java", path)))) {
             String ws = FormatUtils.getWhitespacesString(innerLevel);
             parserWriter.write(String.format("package %s;\n", pkg));
@@ -280,123 +275,4 @@ public class ParserGenerator {
         return body.toString();
     }
 
-
-    private void countFirst() {
-        boolean changed = true;
-        while (changed) {
-            changed = false;
-            for (NonTerminal nt : nonTerminals) {
-                Rule ntRule = rules.get(nt);
-                List<List<RuleElem>> productions = ntRule.getProductions();
-                int firstSize = this.first.get(nt.getName()).size();
-                for (List<RuleElem> prod : productions) {
-                    List<RuleElem> oneProd = prod.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
-                    for (int i = 0; i < oneProd.size(); ++i) {
-                        RuleElem elem = oneProd.get(i);
-                        if (elem instanceof Terminal) {
-                            Terminal terminal = (Terminal) elem;
-                            if (terminal.getName().equals("EPS")) {
-                                if (eps == null)
-                                    eps = terminal;
-                            }
-                            this.first.get(nt.getName()).add(terminal);
-                            break;
-                        } else if (elem instanceof NonTermPair) {
-                            if (i == 0)
-                                this.first.get(nt.getName()).addAll(this.first.get(elem.getName()));
-                            else {
-                                RuleElem previous = oneProd.get(i - 1);
-                                if (previous instanceof NonTermPair)
-                                    if (this.first.get(previous.getName()).contains(eps))
-                                        this.first.get(nt.getName()).addAll(this.first.get(previous.getName()));
-                            }
-                        }
-                    }
-                }
-                changed |= (firstSize != this.first.get(nt.getName()).size());
-            }
-        }
-    }
-
-    private void countFollow() {
-        boolean changed = true;
-        this.follow.get(nonTerminals.iterator().next().getName()).add(end);
-        while (changed) {
-            changed = false;
-            for (NonTerminal nt : nonTerminals) {
-                Rule ntRule = rules.get(nt);
-                List<List<RuleElem>> productions = ntRule.getProductions();
-                for (List<RuleElem> prod : productions) {
-                    List<RuleElem> oneProd = prod.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
-                    for (int i = 0; i < oneProd.size(); ++i) {
-                        RuleElem elem = oneProd.get(i);
-                        if (elem instanceof NonTermPair) {
-                            int followSize = this.follow.get(elem.getName()).size();
-                            if (i == oneProd.size() - 1) {
-                                this.follow.get(elem.getName()).addAll(this.follow.get(nt.getName()));
-                            }
-                            for (int j = i + 1; j < oneProd.size(); ++j) {
-                                RuleElem next = oneProd.get(j);
-                                if (next instanceof Terminal) {
-                                    Terminal terminal = (Terminal) next;
-                                    if (next.getName().equals("EPS"))
-                                        this.follow.get(elem.getName()).addAll(this.follow.get(nt.getName()));
-                                    else
-                                        this.follow.get(elem.getName()).add(terminal);
-                                    break;
-                                } else if (next instanceof NonTermPair) {
-                                    NonTerminal nonTerminal = ((NonTermPair) next).getNonTerminal();
-                                    this.follow.get(elem.getName()).addAll(this.first.get(nonTerminal.getName()));
-                                    this.follow.get(elem.getName()).remove(eps);
-                                    if (this.first.get(nonTerminal.getName()).contains(eps))
-                                        this.follow.get(elem.getName()).addAll(this.follow.get(nt.getName()));
-                                    else {
-                                        break;
-                                    }
-                                }
-                            }
-                            changed |= (followSize != this.follow.get(elem.getName()).size());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void checkLL1() throws NotLL1GrammarException {
-        for (NonTerminal nt : nonTerminals) {
-            Rule ntRule = rules.get(nt);
-            List<List<RuleElem>> productions = ntRule.getProductions();
-            for (List<RuleElem> prod1 : productions)
-                for (List<RuleElem> prod2 : productions) {
-                    if (prod1 == prod2)
-                        continue;
-                    List<RuleElem> firstProd = prod1.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
-                    List<RuleElem> secondProd = prod2.stream().filter((it) -> !(it instanceof CodeBlock)).collect(Collectors.toList());
-                    Set<Terminal> first1 = getElemsFirst(firstProd.get(0));
-                    Set<Terminal> first2 = getElemsFirst(secondProd.get(0));
-                    if (first1.contains(eps)) {
-                        Set<Terminal> follow = new HashSet<>(this.follow.get(nt.getName()));
-                        follow.retainAll(first2);
-                        if (follow.size() != 0)
-                            throw new NotLL1GrammarException("Given grammar is not LL1");
-                    } else {
-                        first1.retainAll(first2);
-                        if (first1.size() != 0)
-                            throw new NotLL1GrammarException("Given grammar is not LL1");
-                    }
-                }
-        }
-    }
-
-    private Set<Terminal> getElemsFirst(RuleElem elem) {
-        if (elem instanceof NonTermPair) {
-            NonTerminal nonTerminal = ((NonTermPair) elem).getNonTerminal();
-            return new HashSet<>(this.first.get(nonTerminal.getName()));
-        } else if (elem instanceof Terminal) {
-            Terminal terminal = (Terminal) elem;
-            return new HashSet<>(Collections.singletonList(terminal));
-        }
-        return null;
-    }
 }
