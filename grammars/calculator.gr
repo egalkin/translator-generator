@@ -84,14 +84,15 @@ power1 [Integer inVal] returns [Integer value]
 
 
 unary returns [Integer value]
-    :  opPlusMinus {String op = opPlusMinus.getValue();}
-       term
-         {value = term.getValue();}
-         {if (op.equals("-")) value = 0 - value;}
-       | term {value = term.getValue();}
+    :
+      term {value = term.getValue();}
              fact<value>
                   { Integer factVal = fact.getValue();    }
                   { if (factVal != null) value = factVal; }
+      | opPlusMinus {String op = opPlusMinus.getValue();}
+       term
+         {value = term.getValue();}
+         {if (op.equals("-")) value = 0 - value;}
     ;
 
 
