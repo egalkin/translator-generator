@@ -19,6 +19,8 @@ public class ParserGenerator {
     private HashMap<String, HashSet<Terminal>> first;
     private HashMap<String, HashSet<Terminal>> follow;
     private Terminal eps;
+    private Terminal end;
+    private NonTerminal start;
 
 
     public ParserGenerator(Set<NonTerminal> nonTerminals, HashMap<NonTerminal, Rule> rules, List<String> imports) {
@@ -28,6 +30,8 @@ public class ParserGenerator {
         this.first = new HashMap<>();
         this.follow = new HashMap<>();
         this.eps = null;
+        this.end = new Terminal("END");
+        this.start = nonTerminals.iterator().next();
         for (NonTerminal nt : nonTerminals) {
             first.put(nt.getName(), new HashSet<>());
             follow.put(nt.getName(), new HashSet<>());
@@ -49,30 +53,6 @@ public class ParserGenerator {
             System.out.println(ex.getMessage());
         }
     }
-
-    private void buildFirst() {
-        countFirst();
-        for (String name : first.keySet()) {
-            System.out.print(name + " first : ");
-            for (Terminal term : first.get(name)) {
-                System.out.print(term + " ");
-            }
-            System.out.println();
-        }
-
-    }
-
-    private void buildFollow() {
-        countFollow();
-        for (String name : follow.keySet()) {
-            System.out.print(name + " folow : ");
-            for (Terminal term : follow.get(name)) {
-                System.out.print(term + " ");
-            }
-            System.out.println();
-        }
-    }
-
 
     private String buildImports() {
         StringJoiner imports = new StringJoiner("");
@@ -145,21 +125,44 @@ public class ParserGenerator {
             body.add(String.format("%s%s", ws, String.format("%s %s = %s;\n", rule.getReturnValue(), rule.getVarName(), null)));
         else
             body.add(String.format("%s%s", ws, "Object value = null;\n"));
-        body.add(String.format("%s%s", ws, String.format("if (this.first.get(\"%s\").contains(curToken)) {\n",
-                rule.getNonTerminal().getName())));
+        body.add(String.format("%s%s", ws, "switch (curToken) {\n"));
         body.add(buildRuleIfBranchBody(rule, innerLevel + 1));
+        if (this.first.get(rule.getNonTerminal().getName()).contains(eps)) {
+            body.add(buildEpsBranchBody(rule, innerLevel + 1));
+        }
+        body.add(buildExceptionBranchBody(innerLevel + 1));
         body.add(FormatUtils.getDefaultEnd(ws, false));
-        body.add(String.format("%s%s", ws, String.format("if (this.follow.get(\"%s\").contains(curToken)) return new Tree<>(\"%s\",Arrays.asList(new Tree(\"eps\")), %s);\n",
-                rule.getNonTerminal().getName(), rule.getNonTerminal().getName(), rule.getVarName())));
-        body.add(String.format("%s%s", ws,
-                "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
+        return body.toString();
+    }
+
+    private String buildExceptionBranchBody(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner body = new StringJoiner("");
+        body.add(String.format("%s%s", ws, "default:\n"));
+        body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
+                "throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
         return body.toString();
     }
 
 
-    private String buildTerminalCaseBaseBody(String ws, Terminal terminal, Set<String> namesInContext) {
+    private String buildEpsBranchBody(Rule rule, int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = new StringJoiner("");
-        body.add(String.format("%sif (curToken == Token.%s) {\n", ws, terminal.getName()));
+        Set<Terminal> follow = this.follow.get(rule.getNonTerminal().getName());
+        for (Terminal terminal : follow) {
+            body.add(String.format("%s%s", ws, String.format("case %s:\n", terminal.getName())));
+        }
+        body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
+                String.format("return new Tree<>(\"%s\",Arrays.asList(new Tree(\"eps\")), %s);\n", rule.getNonTerminal().getName(), rule.getVarName())));
+        return body.toString();
+    }
+
+    private String buildTerminalCaseBaseBody(String ws, Terminal terminal, Set<String> namesInContext, boolean isCase) {
+        StringJoiner body = new StringJoiner("");
+        if (isCase)
+            body.add(String.format("%scase %s:\n", ws, terminal.getName()));
+        else
+            body.add(String.format("%sif (curToken == Token.%s) {\n", ws, terminal.getName()));
         if (!namesInContext.contains(terminal.getName())) {
             body.add(String.format("%sTree<String> %s = new Tree<>(this.lex.getCurTokenString(), Collections.emptyList(), this.lex.getCurTokenString());\n",
                     FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal.getName()));
@@ -175,16 +178,19 @@ public class ParserGenerator {
         return body.toString();
     }
 
-    private String buildNonTermPairCaseBaseBody(String ws, NonTermPair pair, Set<String> namesInContext, boolean addIfBranch) {
+    private String buildNonTermPairCaseBaseBody(String ws, NonTermPair pair, Set<String> namesInContext, boolean isCase) {
         StringJoiner body = new StringJoiner("");
         NonTerminal nonTerminal = pair.getNonTerminal();
         List<String> params = pair.getParams();
         StringJoiner paramString = new StringJoiner(",");
         for (String param : params)
             paramString.add(param);
-        if (addIfBranch)
-            body.add(String.format("%s%s", ws, String.format("if (this.first.get(\"%s\").contains(curToken)) {\n",
-                    nonTerminal.getName())));
+        if (isCase) {
+            Set<Terminal> first = this.first.get(nonTerminal.getName());
+            for (Terminal terminal : first){
+                body.add(String.format("%s%s", ws, String.format("case %s:\n", terminal.getName())));
+            }
+        }
         String type = rules.get(nonTerminal).getReturnValue();
         String genericType = type == null ? "Object" : type;
         if (!namesInContext.contains(nonTerminal.getName())) {
@@ -204,8 +210,8 @@ public class ParserGenerator {
     private String buildRuleIfBranchBody(Rule rule, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = new StringJoiner("");
+        Set<String> namesInContext = new HashSet<>();
         for (List<RuleElem> oneProd : rule.getProductions()) {
-            Set<String> namesInContext = new HashSet<>();
             if (oneProd.size() == 1 && oneProd.get(0).getName().equals("EPS"))
                 continue;
             for (int i = 0; i < oneProd.size(); ++i) {
@@ -213,7 +219,7 @@ public class ParserGenerator {
                 if (i == 0) {
                     if (elem instanceof Terminal) {
                         Terminal terminal = (Terminal) elem;
-                        body.add(buildTerminalCaseBaseBody(ws, terminal, namesInContext));
+                        body.add(buildTerminalCaseBaseBody(ws, terminal, namesInContext,true));
                     } else if (elem instanceof NonTermPair) {
                         NonTermPair pair = (NonTermPair) elem;
                         body.add(buildNonTermPairCaseBaseBody(ws, pair, namesInContext, true));
@@ -226,7 +232,7 @@ public class ParserGenerator {
                 } else {
                     if (elem instanceof Terminal) {
                         Terminal terminal = (Terminal) elem;
-                        body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal, namesInContext));
+                        body.add(buildTerminalCaseBaseBody(FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), terminal, namesInContext, false));
                         body.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), false));
                         body.add(String.format("%s%s", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER),
                                 "else throw new ParseException(\"Unexpected symbol \" + (char) lex.getCurChar() + \" at position: \" + lex.getCurPos(), lex.getCurPos());\n"));
@@ -243,7 +249,6 @@ public class ParserGenerator {
                 }
             }
             body.add(String.format("%sreturn new Tree<>(\"%s\", trees,%s);\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), rule.getNonTerminal().getName(), rule.getVarName()));
-            body.add(FormatUtils.getDefaultEnd(ws, false));
         }
         return body.toString();
     }
@@ -271,29 +276,8 @@ public class ParserGenerator {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = FormatUtils.getDefaultStringJoiner(ws, false);
         body.add("this.lex = new LexicalAnalyzer(is)");
-        body.add("this.first = new HashMap()");
-        fillMap(body, first, "first");
-        body.add("this.follow = new HashMap()");
-        fillMap(body, follow, "follow");
         body.add("this.lex.nextToken()");
         return body.toString();
-    }
-
-
-    private void fillMap(StringJoiner body, HashMap<String, HashSet<Terminal>> mp, String name) {
-        for (String nt : mp.keySet()) {
-            int i = 0;
-            for (Terminal terminal : mp.get(nt)) {
-                if (i == 0) {
-                    body.add(String.format("this.%s.put(\"%s\", new HashSet())", name, nt));
-                    if (name.equals("follow"))
-                        body.add(String.format("this.%s.get(\"%s\").add(Token.END)", name, nt));
-
-                }
-                body.add(String.format("this.%s.get(\"%s\").add(Token.%s)", name, nt, terminal.getName()));
-                i++;
-            }
-        }
     }
 
 
@@ -336,6 +320,7 @@ public class ParserGenerator {
 
     private void countFollow() {
         boolean changed = true;
+        this.follow.get(nonTerminals.iterator().next().getName()).add(end);
         while (changed) {
             changed = false;
             for (NonTerminal nt : nonTerminals) {
