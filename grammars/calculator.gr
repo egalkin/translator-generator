@@ -8,12 +8,12 @@ expr returns [Integer value]
     : mulDiv
         { Integer v = mulDiv.getValue(); }
         { value = v == null ? 0 : v;       }
-      expr1<value>
-        { if (expr1.getValue() != null) }
-        {   value = expr1.getValue();  }
+      exprPrime<value>
+        { if (exprPrime.getValue() != null) }
+        {   value = exprPrime.getValue();  }
     ;
 
-expr1 [Integer inVal] returns [Integer value]
+exprPrime [Integer inVal] returns [Integer value]
     : opPlusMinus
         { String op = opPlusMinus.getValue();       }
       mulDiv
@@ -21,9 +21,9 @@ expr1 [Integer inVal] returns [Integer value]
         { if (op.equals("+")) value = inVal + v;       }
         { else if (op.equals("-")) value = inVal - v;  }
         { else value = inVal;                          }
-      expr1<value>
-        { if (expr1.getValue() != null)             }
-        {   value = expr1.getValue();               }
+      exprPrime<value>
+        { if (exprPrime.getValue() != null)             }
+        {   value = exprPrime.getValue();               }
     |
     ;
 
@@ -36,12 +36,12 @@ opPlusMinus returns [String s]
 mulDiv returns [Integer value]
     : power
         { value = power.getValue();        }
-      mulDiv1<value>
-        { if (mulDiv1.getValue() != null)    }
-        {   value = mulDiv1.getValue();     }
+      mulDivPrime<value>
+        { if (mulDivPrime.getValue() != null)    }
+        {   value = mulDivPrime.getValue();     }
     ;
 
-mulDiv1 [Integer inVal] returns [Integer value]
+mulDivPrime [Integer inVal] returns [Integer value]
     : opMulDiv
         { String op = opMulDiv.getValue();          }
       power
@@ -49,9 +49,9 @@ mulDiv1 [Integer inVal] returns [Integer value]
         { if (op.equals("*")) value = inVal * v;       }
         { else if (op.equals("/")) value = inVal / v;  }
         { else value = inVal;                          }
-      mulDiv1<value>
-        { if (mulDiv1.getValue() != null)            }
-        {   value = mulDiv1.getValue();             }
+      mulDivPrime<value>
+        { if (mulDivPrime.getValue() != null)            }
+        {   value = mulDivPrime.getValue();             }
     |
     ;
 
@@ -64,20 +64,20 @@ power returns [Integer value]
     : unary
         { Integer v = unary.getValue();    }
         { value = v == null ? 1 : v;       }
-      power1<value>
-        { if (power1.getValue() != null) }
-        {   value = power1.getValue();  }
+      powerPrime<value>
+        { if (powerPrime.getValue() != null) }
+        {   value = powerPrime.getValue();  }
     ;
 
 
-power1 [Integer inVal] returns [Integer value]
+powerPrime [Integer inVal] returns [Integer value]
    : POW
      unary
        { Integer v = unary.getValue();             }
        {    value = (int) Math.pow(inVal, v);}
-     power1<v>
-       { if (power1.getValue() != null) }
-       {   value = (int) Math.pow(inVal, power1.getValue());  }
+     powerPrime<v>
+       { if (powerPrime.getValue() != null) }
+       {   value = (int) Math.pow(inVal, powerPrime.getValue());  }
 
     |
    ;
