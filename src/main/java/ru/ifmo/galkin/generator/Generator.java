@@ -4,7 +4,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import ru.ifmo.galkin.antlr4.ParserGrammarLexer;
 import ru.ifmo.galkin.antlr4.ParserGrammarParser;
-import ru.ifmo.galkin.excaption.NotLL1GrammarException;
+import ru.ifmo.galkin.exception.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.Grammar;
 import ru.ifmo.galkin.grammar.GrammarDescription;
 import ru.ifmo.galkin.grammar.Terminal;

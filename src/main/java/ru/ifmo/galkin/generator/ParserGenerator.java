@@ -1,6 +1,5 @@
 package ru.ifmo.galkin.generator;
 
-import ru.ifmo.galkin.excaption.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.*;
 import ru.ifmo.galkin.utils.FormatUtils;
 
@@ -8,7 +7,6 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ParserGenerator {
     private final int WS_MULTIPLIER = 4;

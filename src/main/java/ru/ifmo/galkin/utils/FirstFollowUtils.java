@@ -1,6 +1,6 @@
 package ru.ifmo.galkin.utils;
 
-import ru.ifmo.galkin.excaption.NotLL1GrammarException;
+import ru.ifmo.galkin.exception.NotLL1GrammarException;
 import ru.ifmo.galkin.grammar.*;
 
 import java.util.*;

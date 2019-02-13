@@ -1,8 +1,5 @@
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import ru.ifmo.galkin.excaption.NotLL1GrammarException;
-import ru.ifmo.galkin.generator.Generator;
 import ru.ifmo.galkin.gparse.Parser;
 
 import java.io.ByteArrayInputStream;
