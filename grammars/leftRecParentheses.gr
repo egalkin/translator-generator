@@ -1,4 +1,4 @@
-grammar bEgor
+grammar leftRecursionCbs
 
 @header {
     import java.util.ArrayList;

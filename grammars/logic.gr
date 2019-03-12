@@ -1,4 +1,4 @@
-grammar logic
+grammar logicExpressions
 
 expr: impl exprprime;
 exprprime: IMPL impl exprprime | ;

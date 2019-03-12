@@ -1,4 +1,4 @@
-grammar bEgor
+grammar rightBranching
 
 a
     : A B1

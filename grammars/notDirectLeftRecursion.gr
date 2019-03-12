@@ -1,4 +1,4 @@
-grammar bEgor
+grammar nonDirectLeftRecursion
 
 @header {
     import java.util.ArrayList;

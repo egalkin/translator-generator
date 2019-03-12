@@ -1,4 +1,4 @@
-grammar leftRecCalc
+grammar leftRecursionCalculator
 
 expr
     : expr PLUS expr
