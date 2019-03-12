@@ -1,4 +1,4 @@
-#translator-generator
+# translator-generator
 
 ## Description
 
