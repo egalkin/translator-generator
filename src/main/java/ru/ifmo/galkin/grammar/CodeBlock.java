@@ -4,15 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CodeBlock extends RuleElem{
-    private List<String> codeLines;
+    private String codeLine;
 
-    public CodeBlock(List<String> codeLines) {
+    public CodeBlock(String codeLine) {
         super("codeBlock");
-        this.codeLines = codeLines;
+        this.codeLine = codeLine;
     }
 
-    public List<String> getCodeLines() {
-        return codeLines;
+    public String getCodeLine() {
+        return codeLine;
     }
 
 }
