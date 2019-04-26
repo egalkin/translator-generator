@@ -172,9 +172,8 @@ public class ParserGenerator {
                         body.add(buildNonTermPairCaseBaseBody(ws, pair, namesInContext, true));
                     } else if (elem instanceof CodeBlock) {
                         CodeBlock codeBlock = (CodeBlock) elem;
-                        for (String line : codeBlock.getCodeLines()) {
-                            body.add(String.format("%s%s\n", ws, line.substring(1, line.length() - 1).trim()));
-                        }
+                        String line = codeBlock.getCodeLine();
+                        body.add(String.format("%s%s\n", ws, line.substring(1, line.length() - 1).trim()));
                     }
                 } else {
                     if (elem instanceof Terminal) {
@@ -189,9 +188,8 @@ public class ParserGenerator {
                         body.add(buildNonTermPairCaseBaseBody(ws, pair, namesInContext, false));
                     } else if (elem instanceof CodeBlock) {
                         CodeBlock codeBlock = (CodeBlock) elem;
-                        for (String line : codeBlock.getCodeLines()) {
-                            body.add(String.format("%s%s\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), line.substring(1, line.length() - 1).trim()));
-                        }
+                        String line = codeBlock.getCodeLine();
+                        body.add(String.format("%s%s\n", FormatUtils.getModifiedWs(ws, WS_MULTIPLIER), line.substring(1, line.length() - 1).trim()));
                     }
                 }
             }
