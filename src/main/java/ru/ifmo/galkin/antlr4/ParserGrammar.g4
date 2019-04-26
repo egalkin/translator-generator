@@ -130,7 +130,7 @@ ruleDescription returns [List<RuleElem> rule]
            $rule.add(new NonTermPair(nonTerminal.getName(), nonTerminal, params));
            }
     | CODE_BLOCK {
-        $rule.add(new CodeBlock(new ArrayList<>(Arrays.asList($CODE_BLOCK.text))));
+        $rule.add(new CodeBlock($CODE_BLOCK.text));
     })+
     | {$rule = new ArrayList<>(); $rule.add(eps);}
   ;
