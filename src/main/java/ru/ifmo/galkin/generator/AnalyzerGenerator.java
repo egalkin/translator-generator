@@ -1,6 +1,5 @@
 package ru.ifmo.galkin.generator;
 
-import ru.ifmo.galkin.grammar.Terminal;
 import ru.ifmo.galkin.utils.FormatUtils;
 
 import java.io.BufferedWriter;
@@ -39,29 +38,29 @@ public class AnalyzerGenerator {
         for (String varDecl : needGetterVars) {
             body.add(buildGetter(varDecl, innerLevel));
         }
-        body.add(buildGetTokenByName(valuesToTerms, innerLevel));
+        body.add(buildGetTokenByValue(valuesToTerms, innerLevel));
         body.add(buildIsBlank(innerLevel));
         body.add(buildNextChar(innerLevel));
-        body.add(buildNextToken(innerLevel));
+        body.add(buildNextToken(valuesToTerms, innerLevel));
         return body.toString();
     }
 
-    private String buildGetTokenByName(HashMap<String, String> valuesToTerms, int innerLevel) {
+    private String buildGetTokenByValue(HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner method = new StringJoiner("");
-        method.add(String.format(wsAndStringTemplate, ws, "private Token getTokenByName(String name) {\n"));
-        method.add(buildGetTokenByNameBody(valuesToTerms, innerLevel + 1));
+        method.add(String.format(wsAndStringTemplate, ws, "private Token getTokenByValue(String value) {\n"));
+        method.add(buildGetTokenByValueBody(valuesToTerms, innerLevel + 1));
         method.add(FormatUtils.getDefaultEnd(ws, true));
         return method.toString();
     }
 
-    private String buildGetTokenByNameBody(HashMap<String, String> valuesToTerms, int innerLevel) {
+    private String buildGetTokenByValueBody(HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = new StringJoiner("");
         for (String key : valuesToTerms.keySet()) {
             String name = valuesToTerms.get(key);
-            body.add(String.format(wsAndStringTemplate, ws, String.format("if (name.equals(\"%s\")) {\n",
-                    name)));
+            body.add(String.format(wsAndStringTemplate, ws, String.format("if (value.equals(\"%s\")) {\n",
+                    key)));
             body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4),
                     String.format("return Token.%s;\n", name)));
             body.add(FormatUtils.getDefaultEnd(ws, false));
@@ -70,49 +69,62 @@ public class AnalyzerGenerator {
         return body.toString();
     }
 
-    private String buildNextToken(int innerLevel) {
+    private String buildNextToken(HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner method = new StringJoiner("");
         method.add(String.format(wsAndStringTemplate, ws, "public void nextToken() throws ParseException {\n"));
         method.add(buildWhitespacesSkipper(innerLevel + 1));
-        method.add(buildTokenChecker(innerLevel + 1));
+        method.add(buildTokenChecker(valuesToTerms,innerLevel + 1));
         method.add(FormatUtils.getDefaultEnd(ws, true));
         return method.toString();
     }
 
 
-    private String buildTokenChecker(int innerLevel) {
+    private String buildTokenChecker(HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner checker = new StringJoiner("");
         checker.add(String.format(wsAndStringTemplate, ws, "StringBuilder tokenString = new StringBuilder();\n\n"));
         checker.add(String.format(wsAndStringTemplate, ws, "String matchedRegexp = null;\n\n"));
-        checker.add(String.format(wsAndStringTemplate, ws, "while(true) {\n"));
-        checker.add(buildTokenCheckerBody(innerLevel + 1));
+        checker.add(String.format(wsAndStringTemplate, ws, "boolean tokenParsingFlag = true;;\n\n"));
+        checker.add(String.format(wsAndStringTemplate, ws, "while(tokenParsingFlag) {\n"));
+        checker.add(buildTokenCheckerBody(valuesToTerms, innerLevel + 1));
         checker.add(FormatUtils.getDefaultEnd(ws, false));
         return checker.toString();
     }
 
 
-    private String buildTokenCheckerBody(int innerLevel) {
+    private String buildTokenCheckerBody(HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = new StringJoiner("");
         body.add(String.format(wsAndStringTemplate, ws, "if (curChar == -1) {curToken = Token.END; break;}\n"));
         body.add(String.format(wsAndStringTemplate, ws, "tokenString.append((char)curChar);\n"));
-        body.add(String.format(wsAndStringTemplate, ws, "if (valuesToTerms.containsKey(tokenString.toString())) {\n"));
-        body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4), "nextChar();\n"));
-        body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4),
-                "curToken = getTokenByName(valuesToTerms.get(tokenString.toString()));\n"));
-        body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4),
-                "curTokenString = tokenString.toString();\n"));
-        body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4), "break;\n"));
-        body.add(FormatUtils.getDefaultEnd(ws, false));
-        body.add(String.format(wsAndStringTemplate, ws, "else {\n"));
-        body.add(buildElseBranchForCheckerBody(innerLevel + 1));
+        body.add(String.format(wsAndStringTemplate, ws, "switch(tokenString.toString()) {\n"));
+        for (String key : valuesToTerms.keySet()) {
+            body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4),
+                    String.format("case \"%s\":\n", key)));
+        }
+        body.add(buildCommonTokenCheckerBody(innerLevel+2));
+        body.add(String.format(wsAndStringTemplate, ws + ws.substring(0, 4), "default:\n"));
+        body.add(buildRegexpTokenCheckerBody(innerLevel + 2));
         body.add(FormatUtils.getDefaultEnd(ws, false));
         return body.toString();
     }
 
-    private String buildElseBranchForCheckerBody(int innerLevel) {
+    private String buildCommonTokenCheckerBody(int innerLevel) {
+        String ws = FormatUtils.getWhitespacesString(innerLevel);
+        StringJoiner body = new StringJoiner("");
+        body.add(String.format(wsAndStringTemplate, ws, "nextChar();\n"));
+        body.add(String.format(wsAndStringTemplate, ws,
+                "curToken = getTokenByValue(tokenString.toString());\n"));
+        body.add(String.format(wsAndStringTemplate, ws,
+                "curTokenString = tokenString.toString();\n"));
+        body.add(String.format(wsAndStringTemplate, ws, "tokenParsingFlag = false;\n"));
+        body.add(String.format(wsAndStringTemplate, ws, "break;\n"));
+        return body.toString();
+    }
+
+
+    private String buildRegexpTokenCheckerBody(int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         int wsMultiplyer = 4;
         StringJoiner branch = new StringJoiner("");
@@ -131,9 +143,10 @@ public class AnalyzerGenerator {
         branch.add(String.format(wsAndStringTemplate, FormatUtils.getModifiedWs(ws, wsMultiplyer),
                 "if (Pattern.matches(matchedRegexp, tokenString.toString()) && !Pattern.matches(matchedRegexp, tokenString.toString()+\"\"+(char)curChar)) {\n"));
         branch.add(String.format(wsAndStringTemplate, FormatUtils.getModifiedWs(ws, wsMultiplyer * 2),
-                "curToken = getTokenByName(valuesToTerms.get(matchedRegexp));\n"));
+                "curToken = getTokenByValue(matchedRegexp);\n"));
         branch.add(String.format(wsAndStringTemplate, FormatUtils.getModifiedWs(ws, wsMultiplyer * 2),
                 "curTokenString = tokenString.toString();\n"));
+        branch.add(String.format(wsAndStringTemplate, FormatUtils.getModifiedWs(ws, wsMultiplyer * 2), "tokenParsingFlag = false;\n"));
         branch.add(String.format(wsAndStringTemplate, FormatUtils.getModifiedWs(ws, wsMultiplyer * 2), "break;\n"));
         branch.add(FormatUtils.getDefaultEnd(FormatUtils.getModifiedWs(ws, wsMultiplyer), false));
         branch.add(FormatUtils.getDefaultEnd(ws, false));
@@ -211,7 +224,6 @@ public class AnalyzerGenerator {
         vars.add("private InputStream is");
         needGetterVars.add("private int curChar");
         vars.add(needGetterVars.get(needGetterVars.size() - 1));
-        vars.add("private HashMap<String,String> valuesToTerms");
         vars.add("private HashMap<String,String> regexpToTerms");
         needGetterVars.add("private int curPos");
         vars.add(needGetterVars.get(needGetterVars.size() - 1));
@@ -226,20 +238,16 @@ public class AnalyzerGenerator {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner constructor = new StringJoiner("");
         constructor.add(String.format(wsAndStringTemplate, ws, "public LexicalAnalyzer(InputStream is) throws ParseException {\n"));
-        constructor.add(getConstructorBody(regexpToTerms, valuesToTerms, innerLevel + 1));
+        constructor.add(buildConstructorBody(regexpToTerms, valuesToTerms, innerLevel + 1));
         constructor.add(FormatUtils.getDefaultEnd(ws, true));
         return constructor.toString();
     }
 
-    private String getConstructorBody(HashMap<String, String> regexpToTerms, HashMap<String, String> valuesToTerms, int innerLevel) {
+    private String buildConstructorBody(HashMap<String, String> regexpToTerms, HashMap<String, String> valuesToTerms, int innerLevel) {
         String ws = FormatUtils.getWhitespacesString(innerLevel);
         StringJoiner body = FormatUtils.getDefaultStringJoiner(ws, false);
         body.add("this.is = is");
         body.add("curPos = 0");
-        body.add("valuesToTerms = new HashMap()");
-        for (String key : valuesToTerms.keySet()) {
-            body.add(String.format("valuesToTerms.put(\"%s\",\"%s\")", key, valuesToTerms.get(key)));
-        }
         body.add("regexpToTerms = new HashMap()");
         for (String key : regexpToTerms.keySet()) {
             body.add(String.format("regexpToTerms.put(\"%s\",\"%s\")", key, regexpToTerms.get(key)));
@@ -247,6 +255,5 @@ public class AnalyzerGenerator {
         body.add("nextChar()");
         return body.toString();
     }
-
 
 }
